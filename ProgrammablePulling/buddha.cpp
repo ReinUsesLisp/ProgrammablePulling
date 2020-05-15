@@ -72,7 +72,6 @@ class BuddhaDemo : public IBuddhaDemo
     Camera camera;                          // camera data
 
     Transform transform;                    // transformation data
-    GLuint transformUB;                     // uniform buffer for the transformation
 
     struct VertexProg {
         GLuint prog;
@@ -657,12 +656,6 @@ BuddhaDemo::BuddhaDemo()
     // initialize camera data
     cameraRotationFactor = 0.f;
 
-    // create uniform buffer
-    glGenBuffers(1, &transformUB);
-    glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-    glBufferStorage(GL_UNIFORM_BUFFER, sizeof(transform), NULL, GL_DYNAMIC_STORAGE_BIT);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
     glGenQueries(1, &timeElapsedQuery);
 
     loadShaders();
@@ -917,9 +910,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
 	transform.ModelViewMatrix = translate(transform.ModelViewMatrix, -camera.position);
     transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)screenWidth / screenHeight, 0.1f, 40.f);
 	transform.MVPMatrix = transform.ProjectionMatrix * transform.ModelViewMatrix;
-	glBindBuffer(GL_UNIFORM_BUFFER, transformUB);
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(transform), &transform);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, screenWidth, screenHeight);
@@ -1132,8 +1122,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.uniqueNormalBufferXYZW);
     }
 
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, transformUB);
-
     glBindVertexArray(model.drawCmd[mode].vertexArray);
 
     if (model.drawCmd[mode].primType == GL_PATCHES)
@@ -1150,6 +1138,11 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
     }
 
     glBeginQuery(GL_TIME_ELAPSED, timeElapsedQuery);
+
+    // Bind uniform constants
+    glUniformMatrix4fv(0, 1, GL_FALSE, reinterpret_cast<GLfloat*>(&transform.ModelViewMatrix));
+    glUniformMatrix4fv(4, 1, GL_FALSE, reinterpret_cast<GLfloat*>(&transform.ProjectionMatrix));
+    glUniformMatrix4fv(8, 1, GL_FALSE, reinterpret_cast<GLfloat*>(&transform.MVPMatrix));
 
     if (model.drawCmd[mode].drawType == DRAWCMD_DRAWARRAYS)
     {

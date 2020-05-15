@@ -1,10 +1,10 @@
 layout(triangles) in;
 
-layout(std140, binding = 0) uniform transform {
-    mat4 ModelViewMatrix;
-    mat4 ProjectionMatrix;
-    mat4 MVPMatrix;
-} Transform;
+
+layout(location = 0) uniform mat4 ModelViewMatrix;
+layout(location = 4) uniform mat4 ProjectionMatrix;
+layout(location = 8) uniform mat4 MVPMatrix;
+
 
 patch in vec3 PatchAssembly[6];
 
@@ -20,5 +20,5 @@ void main()
 {
     outVertexPosition = gl_TessCoord.x * PatchAssembly[0] + gl_TessCoord.y * PatchAssembly[2] + gl_TessCoord.z * PatchAssembly[4];
     outVertexNormal   = gl_TessCoord.x * PatchAssembly[1] + gl_TessCoord.y * PatchAssembly[3] + gl_TessCoord.z * PatchAssembly[5];
-    gl_Position = Transform.ProjectionMatrix * vec4(outVertexPosition, 1);
+    gl_Position = ProjectionMatrix * vec4(outVertexPosition, 1);
 }

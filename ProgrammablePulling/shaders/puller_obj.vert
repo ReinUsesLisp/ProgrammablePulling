@@ -1,8 +1,8 @@
-layout(std140, binding = 0) uniform transform {
-    mat4 ModelViewMatrix;
-    mat4 ProjectionMatrix;
-    mat4 MVPMatrix;
-} Transform;
+
+layout(location = 0) uniform mat4 ModelViewMatrix;
+layout(location = 4) uniform mat4 ProjectionMatrix;
+layout(location = 8) uniform mat4 MVPMatrix;
+
 
 layout(std430, binding = 0) restrict readonly buffer PositionIndexBuffer { uint PositionIndices[]; };
 layout(std430, binding = 1) restrict readonly buffer NormalIndexBuffer { uint NormalIndices[]; };
@@ -30,8 +30,8 @@ void main(void) {
     inVertexNormal.xyz = Normals[normalIndex].xyz;
 
     /* transform vertex and normal */
-    outVertexPosition = (Transform.ModelViewMatrix * vec4(inVertexPosition, 1)).xyz;
-    outVertexNormal = mat3(Transform.ModelViewMatrix) * inVertexNormal;
-    gl_Position = Transform.MVPMatrix * vec4(inVertexPosition, 1);
+    outVertexPosition = (ModelViewMatrix * vec4(inVertexPosition, 1)).xyz;
+    outVertexNormal = mat3(ModelViewMatrix) * inVertexNormal;
+    gl_Position = MVPMatrix * vec4(inVertexPosition, 1);
 
 }

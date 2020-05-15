@@ -1,8 +1,8 @@
-layout(std140, binding = 0) uniform transform {
-    mat4 ModelViewMatrix;
-    mat4 ProjectionMatrix;
-    mat4 MVPMatrix;
-} Transform;
+
+layout(location = 0) uniform mat4 ModelViewMatrix;
+layout(location = 4) uniform mat4 ProjectionMatrix;
+layout(location = 8) uniform mat4 MVPMatrix;
+
 
 struct CacheEntry
 {
@@ -157,9 +157,9 @@ CachedVertex recompute_vertex(uint positionIndex, uint normalIndex)
 
     /* transform vertex and normal */
     CachedVertex vertex;
-    vertex.m_outVertexPosition = Transform.ModelViewMatrix * vec4(inVertexPosition, 1);
-    vertex.m_outVertexNormal = vec4(mat3(Transform.ModelViewMatrix) * inVertexNormal, 0);
-    vertex.m_gl_Position = Transform.MVPMatrix * vec4(inVertexPosition, 1);
+    vertex.m_outVertexPosition = ModelViewMatrix * vec4(inVertexPosition, 1);
+    vertex.m_outVertexNormal = vec4(mat3(ModelViewMatrix) * inVertexNormal, 0);
+    vertex.m_gl_Position = MVPMatrix * vec4(inVertexPosition, 1);
 
     return vertex;
 }

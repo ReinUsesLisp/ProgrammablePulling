@@ -1,11 +1,11 @@
 layout(triangles_adjacency) in; // hack to pass in a patch of 6 inputs to the GS
 layout(triangle_strip, max_vertices = 3) out;
 
-layout(std140, binding = 0) uniform transform {
-    mat4 ModelViewMatrix;
-    mat4 ProjectionMatrix;
-    mat4 MVPMatrix;
-} Transform;
+
+layout(location = 0) uniform mat4 ModelViewMatrix;
+layout(location = 4) uniform mat4 ProjectionMatrix;
+layout(location = 8) uniform mat4 MVPMatrix;
+
 
 in vec3 assembly[];
 
@@ -23,7 +23,7 @@ void main()
     {
         outVertexPosition = assembly[i * 2 + 0];
         outVertexNormal = assembly[i * 2 + 1];
-        gl_Position = Transform.ProjectionMatrix * vec4(outVertexPosition, 1);
+        gl_Position = ProjectionMatrix * vec4(outVertexPosition, 1);
         EmitVertex();
     }
 
