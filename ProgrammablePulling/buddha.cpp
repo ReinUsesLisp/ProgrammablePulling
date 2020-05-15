@@ -52,9 +52,19 @@ enum DrawCmdType
     DRAWCMD_DRAWELEMENTS
 };
 
+enum class VertexArray {
+    Null,
+    IndexBufferOnly,
+    Interleaved,
+    Assembly,
+    AoS,
+    AoSXYZW,
+    SoA,
+};
+
 struct DrawCommand
 {
-    GLuint vertexArray = 0;
+    VertexArray vertexArray = VertexArray::Null;
     GLenum primType = GL_TRIANGLES;
 
     GLint patchVertices = 0;
@@ -110,13 +120,6 @@ class BuddhaDemo : public IBuddhaDemo
         GLuint normalXBuffer;
         GLuint normalYBuffer;
         GLuint normalZBuffer;
-
-        GLuint nullVertexArray;
-        GLuint vertexArrayIndexBufferOnly;
-        GLuint vertexArrayInterleaved;
-        GLuint vertexArrayAoS;
-        GLuint vertexArrayAoSXYZW;
-        GLuint vertexArraySoA;
 
         // texture handles to the vertex buffers
         GLuint indexTexBufferR32I;
@@ -205,6 +208,13 @@ public:
         free(mem);
     }
 };
+
+struct Interleaved
+{
+    glm::vec3 Position;
+    glm::vec3 Normal;
+};
+static_assert(sizeof(Interleaved) == sizeof(float) * 6, "assume tightly packed");
 
 std::shared_ptr<IBuddhaDemo> IBuddhaDemo::Create()
 {
@@ -296,13 +306,6 @@ void BuddhaDemo::PerModel::load(const char* path)
         glBufferStorage(GL_ARRAY_BUFFER, bufferSize, assemblyIndices.get(), 0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
-
-    struct Interleaved
-    {
-        glm::vec3 Position;
-        glm::vec3 Normal;
-    };
-    static_assert(sizeof(Interleaved) == sizeof(float) * 6, "assume tightly packed");
 
     // AoS interleaved buffer
     {
@@ -416,157 +419,92 @@ void BuddhaDemo::PerModel::load(const char* path)
         }
     }
 
-	// setup vertex arrays
-
-    glGenVertexArrays(1, &nullVertexArray);
-    glBindVertexArray(nullVertexArray);
-    // binding it just creates it...
-
-    glGenVertexArrays(1, &vertexArrayIndexBufferOnly);
-    glBindVertexArray(vertexArrayIndexBufferOnly);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-
-    glGenVertexArrays(1, &vertexArrayInterleaved);
-    glBindVertexArray(vertexArrayInterleaved);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, interleavedBuffer);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Position));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Normal));
-
-    glGenVertexArrays(1, &vertexArrayAoS);
-    glBindVertexArray(vertexArrayAoS);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, positionBuffer);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-
-    glGenVertexArrays(1, &vertexArrayAoSXYZW);
-    glBindVertexArray(vertexArrayAoSXYZW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, positionBufferXYZW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, normalBufferXYZW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
-
-    glGenVertexArrays(1, &vertexArraySoA);
-    glBindVertexArray(vertexArraySoA);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, positionXBuffer);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, positionYBuffer);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, positionZBuffer);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, normalXBuffer);
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, normalYBuffer);
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-    glBindBuffer(GL_ARRAY_BUFFER, normalZBuffer);
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-
-    glGenVertexArrays(1, &assemblyVertexArray);
-    glBindVertexArray(assemblyVertexArray);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assemblyIndexBuffer);
-
-    drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = vertexArrayAoS;
+    drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = VertexArray::AoS;
     drawCmd[FIXED_FUNCTION_AOS_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FIXED_FUNCTION_AOS_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].vertexArray = vertexArrayAoSXYZW;
+    drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].vertexArray = VertexArray::AoSXYZW;
     drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FIXED_FUNCTION_AOS_XYZW_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FIXED_FUNCTION_SOA_MODE].vertexArray = vertexArraySoA;
+    drawCmd[FIXED_FUNCTION_SOA_MODE].vertexArray = VertexArray::SoA;
     drawCmd[FIXED_FUNCTION_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FIXED_FUNCTION_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].vertexArray = vertexArrayInterleaved;
+    drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].vertexArray = VertexArray::Interleaved;
     drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FIXED_FUNCTION_INTERLEAVED_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].vertexArray = VertexArray::IndexBufferOnly;
     drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FETCHER_AOS_1RGBAFETCH_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[FETCHER_AOS_1RGBFETCH_MODE] = drawCmd[FETCHER_AOS_1RGBAFETCH_MODE];
     drawCmd[FETCHER_AOS_3FETCH_MODE] = drawCmd[FETCHER_AOS_1RGBAFETCH_MODE];
 
-    drawCmd[FETCHER_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SOA_MODE].vertexArray = VertexArray::IndexBufferOnly;
     drawCmd[FETCHER_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FETCHER_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].vertexArray = VertexArray::IndexBufferOnly;
     drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[FETCHER_IMAGE_AOS_3FETCH_MODE] = drawCmd[FETCHER_IMAGE_AOS_1FETCH_MODE];
 
-    drawCmd[FETCHER_IMAGE_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_IMAGE_SOA_MODE].vertexArray = VertexArray::IndexBufferOnly;
     drawCmd[FETCHER_IMAGE_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FETCHER_IMAGE_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].vertexArray = VertexArray::IndexBufferOnly;
     drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[FETCHER_SSBO_AOS_3FETCH_MODE] = drawCmd[FETCHER_SSBO_AOS_1FETCH_MODE];
 
-    drawCmd[FETCHER_SSBO_SOA_MODE].vertexArray = vertexArrayIndexBufferOnly;
+    drawCmd[FETCHER_SSBO_SOA_MODE].vertexArray = VertexArray::IndexBufferOnly;
     drawCmd[FETCHER_SSBO_SOA_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[FETCHER_SSBO_SOA_MODE].drawElements.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_AOS_1RGBAFETCH_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_AOS_1RGBAFETCH_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_AOS_1RGBAFETCH_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[PULLER_AOS_1RGBFETCH_MODE] = drawCmd[PULLER_AOS_1RGBAFETCH_MODE];
     drawCmd[PULLER_AOS_3FETCH_MODE] = drawCmd[PULLER_AOS_1RGBAFETCH_MODE];
 
-    drawCmd[PULLER_SOA_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_SOA_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_SOA_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_SOA_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[PULLER_IMAGE_AOS_3FETCH_MODE] = drawCmd[PULLER_IMAGE_AOS_1FETCH_MODE];
 
-    drawCmd[PULLER_IMAGE_SOA_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_IMAGE_SOA_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_IMAGE_SOA_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_IMAGE_SOA_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_SSBO_AOS_1FETCH_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
     drawCmd[PULLER_SSBO_AOS_3FETCH_MODE] = drawCmd[PULLER_SSBO_AOS_1FETCH_MODE];
 
-    drawCmd[PULLER_SSBO_SOA_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_SSBO_SOA_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_SSBO_SOA_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_SSBO_SOA_MODE].drawArrays.count = (GLuint)buddhaObj.Indices.size();
 
-    drawCmd[PULLER_OBJ_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_OBJ_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_OBJ_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_OBJ_MODE].drawArrays.count = (GLuint)buddhaObj.PositionIndices.size();
 
-    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].vertexArray = nullVertexArray;
+    drawCmd[PULLER_OBJ_SOFTCACHE_MODE].vertexArray = VertexArray::Null;
     drawCmd[PULLER_OBJ_SOFTCACHE_MODE].drawType = DRAWCMD_DRAWARRAYS;
     drawCmd[PULLER_OBJ_SOFTCACHE_MODE].drawArrays.count = (GLuint)buddhaObj.PositionIndices.size();
 
-    drawCmd[GS_ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
+    drawCmd[GS_ASSEMBLER_MODE].vertexArray = VertexArray::Assembly;
     drawCmd[GS_ASSEMBLER_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[GS_ASSEMBLER_MODE].primType = GL_TRIANGLES_ADJACENCY; // hack to get patches of 6 vertices
     drawCmd[GS_ASSEMBLER_MODE].drawElements.count = (GLuint)buddhaObj.PositionIndices.size() * 2;
 
-    drawCmd[TS_ASSEMBLER_MODE].vertexArray = assemblyVertexArray;
+    drawCmd[TS_ASSEMBLER_MODE].vertexArray = VertexArray::Assembly;
     drawCmd[TS_ASSEMBLER_MODE].drawType = DRAWCMD_DRAWELEMENTS;
     drawCmd[TS_ASSEMBLER_MODE].primType = GL_PATCHES;
     drawCmd[TS_ASSEMBLER_MODE].patchVertices = 6;
@@ -1121,7 +1059,67 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, model.uniqueNormalBufferXYZW);
     }
 
-    glBindVertexArray(model.drawCmd[mode].vertexArray);
+    // Setup vertex arrays
+    switch (model.drawCmd[mode].vertexArray)
+    {
+    case VertexArray::Null:
+        break;
+    case VertexArray::IndexBufferOnly:
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+        break;
+    case VertexArray::Interleaved:
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, model.interleavedBuffer);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Position));
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Normal));
+        break;
+    case VertexArray::AoS:
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, model.positionBuffer);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.normalBuffer);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
+        break;
+    case VertexArray::AoSXYZW:
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, model.positionBufferXYZW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.normalBufferXYZW);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
+        break;
+    case VertexArray::SoA:
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.indexBuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, model.positionXBuffer);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.positionYBuffer);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.positionZBuffer);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.normalXBuffer);
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.normalYBuffer);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+        glBindBuffer(GL_ARRAY_BUFFER, model.normalZBuffer);
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
+        break;
+    case VertexArray::Assembly:
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.assemblyIndexBuffer);
+        break;
+    default:
+        __assume(0);
+    }
 
     if (model.drawCmd[mode].primType == GL_PATCHES)
     {
