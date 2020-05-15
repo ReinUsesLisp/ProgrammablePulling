@@ -724,14 +724,16 @@ BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filenam
         source.c_str()
     };
 
-    GLuint program = glCreateShaderProgramv(shaderType, sizeof(sources) / sizeof(*sources), sources);
+    GLuint program = glCreateShader(shaderType);
+    glShaderSource(program, static_cast<GLsizei>(std::size(sources)), sources, nullptr);
+    glCompileShader(program);
 
     GLint status;
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    glGetShaderiv(program, GL_COMPILE_STATUS, &status);
     if (status != GL_TRUE) {
         std::cerr << "Failed to compile/link shader program: " << filename << std::endl;
         GLchar log[10000];
-        glGetProgramInfoLog(program, 10000, NULL, log);
+        glGetShaderInfoLog(program, 10000, NULL, log);
         std::cerr << log << std::endl;
         exit(1);
     }
@@ -742,23 +744,22 @@ BuddhaDemo::VertexProg BuddhaDemo::loadShaderProgramFromFile(const char* filenam
 
 GLuint BuddhaDemo::createProgramPipeline(GLuint vertexShader, GLuint tessControlShader, GLuint tessEvaluationShader, GLuint geometryShader, GLuint fragmentShader) {
 
-    GLuint pipeline;
-    glGenProgramPipelines(1, &pipeline);
+    GLuint pipeline = glCreateProgram();
 
-    if (vertexShader != 0) glUseProgramStages(pipeline, GL_VERTEX_SHADER_BIT, vertexShader);
-    if (tessControlShader != 0) glUseProgramStages(pipeline, GL_TESS_CONTROL_SHADER, tessControlShader);
-    if (tessEvaluationShader != 0) glUseProgramStages(pipeline, GL_TESS_EVALUATION_SHADER, tessEvaluationShader);
-    if (geometryShader != 0) glUseProgramStages(pipeline, GL_GEOMETRY_SHADER_BIT, geometryShader);
-    if (fragmentShader != 0) glUseProgramStages(pipeline, GL_FRAGMENT_SHADER_BIT, fragmentShader);
+    if (vertexShader != 0) glAttachShader(pipeline, vertexShader);
+    if (tessControlShader != 0) glAttachShader(pipeline, tessControlShader);
+    if (tessEvaluationShader != 0) glAttachShader(pipeline, tessEvaluationShader);
+    if (geometryShader != 0) glAttachShader(pipeline, geometryShader);
+    if (fragmentShader != 0) glAttachShader(pipeline, fragmentShader);
 
-    glValidateProgramPipeline(pipeline);
+    glLinkProgram(pipeline);
 
     GLint status;
-    glGetProgramPipelineiv(pipeline, GL_VALIDATE_STATUS, &status);
+    glGetProgramiv(pipeline, GL_LINK_STATUS, &status);
     if (status != GL_TRUE) {
         std::cerr << "Failed to validate program pipeline:" << std::endl;
         GLchar log[10000];
-        glGetProgramPipelineInfoLog(pipeline, 10000, NULL, log);
+        glGetProgramInfoLog(pipeline, 10000, NULL, log);
         std::cerr << log << std::endl;
         exit(1);
     }
@@ -928,7 +929,7 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // render scene
-    glBindProgramPipeline(progPipeline[mode]);
+    glUseProgram(progPipeline[mode]);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_FRAMEBUFFER_SRGB);
 
@@ -1205,7 +1206,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
 
     glDisable(GL_FRAMEBUFFER_SRGB);
     glDisable(GL_DEPTH_TEST);
-    glBindProgramPipeline(0);
 
     if (elapsedNanoseconds)
         glGetQueryObjectui64v(timeElapsedQuery, GL_QUERY_RESULT, elapsedNanoseconds);
