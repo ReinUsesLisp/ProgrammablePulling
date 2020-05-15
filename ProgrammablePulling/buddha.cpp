@@ -422,12 +422,10 @@ void BuddhaDemo::PerModel::load(const char* path)
     glGenVertexArrays(1, &nullVertexArray);
     glBindVertexArray(nullVertexArray);
     // binding it just creates it...
-    glBindVertexArray(0);
 
     glGenVertexArrays(1, &vertexArrayIndexBufferOnly);
     glBindVertexArray(vertexArrayIndexBufferOnly);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-    glBindVertexArray(0);
 
     glGenVertexArrays(1, &vertexArrayInterleaved);
     glBindVertexArray(vertexArrayInterleaved);
@@ -437,7 +435,6 @@ void BuddhaDemo::PerModel::load(const char* path)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Position));
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Interleaved), (GLvoid*)offsetof(Interleaved, Normal));
-    glBindVertexArray(0);
 
     glGenVertexArrays(1, &vertexArrayAoS);
     glBindVertexArray(vertexArrayAoS);
@@ -448,7 +445,6 @@ void BuddhaDemo::PerModel::load(const char* path)
     glBindBuffer(GL_ARRAY_BUFFER, normalBuffer);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), 0);
-    glBindVertexArray(0);
 
     glGenVertexArrays(1, &vertexArrayAoSXYZW);
     glBindVertexArray(vertexArrayAoSXYZW);
@@ -459,7 +455,6 @@ void BuddhaDemo::PerModel::load(const char* path)
     glBindBuffer(GL_ARRAY_BUFFER, normalBufferXYZW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), 0);
-    glBindVertexArray(0);
 
     glGenVertexArrays(1, &vertexArraySoA);
     glBindVertexArray(vertexArraySoA);
@@ -482,12 +477,10 @@ void BuddhaDemo::PerModel::load(const char* path)
     glBindBuffer(GL_ARRAY_BUFFER, normalZBuffer);
     glEnableVertexAttribArray(5);
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(float), 0);
-    glBindVertexArray(0);
 
     glGenVertexArrays(1, &assemblyVertexArray);
     glBindVertexArray(assemblyVertexArray);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, assemblyIndexBuffer);
-    glBindVertexArray(0);
 
     drawCmd[FIXED_FUNCTION_AOS_MODE].vertexArray = vertexArrayAoS;
     drawCmd[FIXED_FUNCTION_AOS_MODE].drawType = DRAWCMD_DRAWELEMENTS;
@@ -1196,8 +1189,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, kDefaultInner);
     }
 
-    glBindVertexArray(0);
-    
     // unbind all resources to attempt to prevent GL from thinking one resource is being used in 2 ways simultaneously.
     for (int i = 0; i < 16; i++)
     {
