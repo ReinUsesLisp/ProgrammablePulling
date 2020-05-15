@@ -911,7 +911,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
     transform.ProjectionMatrix = glm::perspective(glm::radians(45.0f), (float)screenWidth / screenHeight, 0.1f, 40.f);
 	transform.MVPMatrix = transform.ProjectionMatrix * transform.ModelViewMatrix;
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, screenWidth, screenHeight);
 
     glClearDepth(1.f);
@@ -1181,20 +1180,6 @@ void BuddhaDemo::renderScene(int meshID, const glm::mat4& modelMatrix, int scree
         glPatchParameteri(GL_PATCH_VERTICES, 3);
         glPatchParameterfv(GL_PATCH_DEFAULT_OUTER_LEVEL, kDefaultOuter);
         glPatchParameterfv(GL_PATCH_DEFAULT_INNER_LEVEL, kDefaultInner);
-    }
-
-    // unbind all resources to attempt to prevent GL from thinking one resource is being used in 2 ways simultaneously.
-    for (int i = 0; i < 16; i++)
-    {
-        bindBufferTextureUnit(i, 0);
-    }
-    for (int i = 0; i < 16; i++)
-    {
-        glBindImageTexture(i, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8);
-    }
-    for (int i = 0; i < 16; i++)
-    {
-        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
     }
 
     glDisable(GL_FRAMEBUFFER_SRGB);
